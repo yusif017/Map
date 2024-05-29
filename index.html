@@ -3,9 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map</title>
+    <title>OpenLayers Map Popup</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ol3/3.20.1/ol.css">
+    <style>
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        .ol-popup {
+            position: absolute;
+            background-color: white;
+            -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+            filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #cccccc;
+            bottom: 12px;
+            left: -50px;
+            min-width: 280px;
+        }
+        .ol-popup:after, .ol-popup:before {
+            top: 100%;
+            border: solid transparent;
+            content: " ";
+            height: 0;
+            width: 0;
+            position: absolute;
+            pointer-events: none;
+        }
+        .ol-popup:after {
+            border-top-color: white;
+            border-width: 10px;
+            left: 48px;
+            margin-left: -10px;
+        }
+        .ol-popup:before {
+            border-top-color: #cccccc;
+            border-width: 11px;
+            left: 48px;
+            margin-left: -11px;
+        }
+        .ol-popup-closer {
+            text-decoration: none;
+            position: absolute;
+            top: 2px;
+            right: 8px;
+        }
+        
+    </style>
 </head>
 <body>
-    
+    <div id="map"></div>
+    <div id="popup" class="ol-popup">
+        <a href="#" id="popup-closer" class="ol-popup-closer">✖</a>
+        <div id="popup-content"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ol3/3.20.1/ol.js"></script>
+    <script>
+        function mapPopup(latitude, longitude) {
+            const defaultWildfireEvents = [
+                {
+                    title: "Baki",
+                    description: "merkez",
+                    coordinates: [49.8671,40.4093], // Şəki marketinin koordinatları
+                    icon: {
+                        src: "https://media.istockphoto.com/id/1997861274/photo/a-beautiful-sunrise-in-baku.jpg?s=1024x1024&w=is&k=20&c=vqwQMWLxpJGf22dJrZ_x13IcpfKziHDSWXBzdd-gH4o=",
+                        scale: 0.09,
+                    },
+                },
+                {
+                    title: "Əfsanə parkı",
+                    description: "Park yandırması",
+                    coordinates: [latitude, longitude], // Əfsanə parkının koordinatları
+                    icon: {
+                        src: "https://cdn.pixabay.com/photo/2014/04/02/10/45/location-304467_1280.png",
+                        scale: 0.03,
+                    },
+                },
+            ];
+
+            const map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM(),
+                    }),
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([49.8671,40.4093]), // Haritada gösterilecek merkezi nokta
+                    zoom: 12, // Yakınlaştırma seviyesi
+                }),
+            });
+
+            const vectorSource = new ol.source.Vector({
+                features: defaultWildfireEvents.map((event) => {
+                    const iconFeature = new ol.Feature({
+                        geometry: new ol.geom.Point(ol.proj.fromLonLat(event.coordinates)),
+                    });
+                    iconFeature.setProperties({
+                        name: event.title,
+                        description: event.description,
+                    });
+                    const iconStyle = new ol.style.Style({
+                        image: new ol.style.Icon({
+                            anchor: [0.5, 1],
+                            anchorXUnits: 'fraction',
+                            anchorYUnits: 'fraction',
+                            src: event.icon.src,
+                            scale: event.icon.scale,
+                        }),
+                    });
+                    iconFeature.setStyle(iconStyle);
+                    return iconFeature;
+                }),
+            });
+
+            const markerLayer = new ol.layer.Vector({
+                source: vectorSource,
+            });
+            map.addLayer(markerLayer);
+
+            const popupElement = document.getElementById('popup');
+            const popupContent = document.getElementById('popup-content');
+            const popupCloser = document.getElementById('popup-closer');
+
+            const overlay = new ol.Overlay({
+                element: popupElement,
+                autoPan: true,
+                autoPanAnimation: {
+                    duration: 250,
+                },
+            });
+            map.addOverlay(overlay);
+
+            popupCloser.onclick = function () {
+                overlay.setPosition(undefined);
+                popupCloser.blur();
+                return false;
+            };
+
+            map.on('singleclick', function (evt) {
+                const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+                    return feature;
+                });
+
+                if (feature) {
+                    const coordinates = feature.getGeometry().getCoordinates();
+                    const properties = feature.getProperties();
+                    popupContent.innerHTML = `<strong>${properties.name}</strong><br>${properties.description}`;
+                    overlay.setPosition(coordinates);
+                }
+            });
+        }
+
+        mapPopup(49.8671,40.4800); // Əfsanə parkının koordinatlarını buraya daxil edin
+    </script>
 </body>
 </html>
